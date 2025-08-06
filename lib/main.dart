@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; 
+import 'screens/dashboard_screen.dart';
+import 'screens/detector_screen.dart';
+import 'screens/history_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/tips_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   runApp(const CareerCheckrApp());
 }
 
@@ -13,20 +22,25 @@ class CareerCheckrApp extends StatelessWidget {
       title: 'CareerCheckr',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        useMaterial3: true,
+        primarySwatch: Colors.indigo,
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(),
+        ),
       ),
       initialRoute: '/',
       routes: {
         '/': (context) => const AuthScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/dashboard': (context) => const DashboardScreen(),
+        '/detector': (context) => const DetectorScreen(),
+        '/history': (context) => const HistoryScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/tips': (context) => const TipsScreen(),
       },
     );
   }
 }
 
-
+// AUTH SCREEN HANDLING LOGIN & SIGNUP
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -35,204 +49,121 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _isLogin = true;
 
-  bool isLogin = true;
-  bool isPasswordVisible = false;
+  void _submit() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  void _toggleAuthMode() {
-    setState(() {
-      isLogin = !isLogin;
-    });
+    setState(() => _isLoading = true);
+
+    await Future.delayed(const Duration(seconds: 1)); // simulate delay
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('email', _emailController.text);
+
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/dashboard');
   }
 
-  void _submit() {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    final passwordRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$');
-
-    if (!emailRegex.hasMatch(email)) {
-      _showMessage('Please enter a valid email address.');
-      return;
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Enter your email';
     }
-
-    if (!passwordRegex.hasMatch(password)) {
-      _showMessage(
-          'Password must be at least 6 characters long, and include uppercase, lowercase, and a number.');
-      return;
+    final emailRegex = RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Enter a valid email';
     }
-
-    // Navigate to Home Screen using named route
-    Navigator.pushReplacementNamed(context, '/home');
+    return null;
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Enter your password';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.indigo[50],
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const Icon(Icons.security, size: 80, color: Colors.blue),
-              const SizedBox(height: 20),
-              Text(
-                isLogin ? 'Login to CareerCheckr' : 'Create an Account',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 30),
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _passwordController,
-                obscureText: !isPasswordVisible,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(() => isPasswordVisible = !isPasswordVisible),
-                  ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _submit,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  backgroundColor: Colors.blue,
-                ),
-                child: Text(
-                  isLogin ? 'Login' : 'Sign Up',
-                  style: const TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 20),
-              GestureDetector(
-                onTap: _toggleAuthMode,
-                child: Text(
-                  isLogin
-                      ? "Don't have an account? Sign Up"
-                      : "Already have an account? Login",
-                  style: const TextStyle(color: Colors.blue),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _jobController = TextEditingController();
-  String _result = "";
-
-  void _checkFakeOrReal() {
-    final description = _jobController.text.trim();
-
-    if (description.isEmpty) {
-      _showMessage("Please paste a job/internship description.");
-      return;
-    }
-
-    // Simple rule-based placeholder logic
-    if (description.toLowerCase().contains("registration fee") ||
-        description.toLowerCase().contains("pay to get offer") ||
-        description.toLowerCase().contains("non-refundable") ||
-        description.toLowerCase().contains("whatsapp only")) {
-      setState(() => _result = "⚠️ This may be a fake internship/job.");
-    } else {
-      setState(() => _result = "✅ This seems like a real opportunity.");
-    }
-  }
-
-  void _showMessage(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('CareerCheckr Dashboard'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Paste Internship/Job Description Below:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _jobController,
-              maxLines: 8,
-              decoration: InputDecoration(
-                hintText: 'Paste the job/internship content here...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton(
-                onPressed: _checkFakeOrReal,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                ),
-                child: const Text(
-                  "Check",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_result.isNotEmpty)
-              Center(
-                child: Text(
-                  _result,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _result.contains("✅") ? Colors.green : Colors.red,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const Icon(Icons.security, size: 72, color: Colors.indigo),
+                const SizedBox(height: 20),
+                Text(
+                  _isLogin ? 'Login to CareerCheckr' : 'Sign Up for CareerCheckr',
+                  style: const TextStyle(
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    color: Colors.indigo,
                   ),
                 ),
-              ),
-          ],
+                const SizedBox(height: 30),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validateEmail,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.mail),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  validator: _validatePassword,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
+                        : Text(
+                            _isLogin ? 'Login' : 'Sign Up',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _isLogin = !_isLogin);
+                  },
+                  child: Text(
+                    _isLogin
+                        ? "Don't have an account? Sign Up"
+                        : "Already have an account? Login",
+                    style: const TextStyle(color: Colors.indigo),
+                  ),
+                )
+              ],
+            ),
+          ),
         ),
       ),
     );

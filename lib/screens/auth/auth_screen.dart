@@ -1,6 +1,6 @@
+import 'package:careercheckr/constants/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:careercheckr/screens/home_screen.dart';
-import 'package:careercheckr/screens/dashboard_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -13,7 +13,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   bool isLogin = true;
   bool isPasswordVisible = false;
   bool _isLoading = false;
@@ -27,35 +26,25 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
-
-      setState(() {
-        _isLoading = true;
-      });
-
-      Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
-          _isLoading = false;
-        });
-
-        _showMessage('${isLogin ? "Login" : "Sign Up"} successful! 🎉');
-
-        // Navigate to HomeScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+      setState(() => _isLoading = true);
+      await Future.delayed(const Duration(seconds: 2));
+      setState(() => _isLoading = false);
+      
+      // Save email locally for profile
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('email', _emailController.text.trim());
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${isLogin ? "Login" : "Sign Up"} successful! 🎉')),
         );
-      });
-    }
-  }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+        // ✅ Redirecting to dashboard screen after login/signup
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      }
+    }
   }
 
   String? _validateEmail(String? value) {
@@ -85,7 +74,7 @@ class _AuthScreenState extends State<AuthScreen> {
             key: _formKey,
             child: Column(
               children: [
-                Icon(Icons.verified_user_rounded, size: 80, color: Colors.blue),
+                Icon(Icons.verified_user_rounded, size: 80, color: AppColors.primary),
                 const SizedBox(height: 20),
                 Text(
                   isLogin ? 'Login to CareerCheckr' : 'Create a CareerCheckr Account',
@@ -93,8 +82,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 30),
-
-                // Email Field
                 TextFormField(
                   controller: _emailController,
                   validator: _validateEmail,
@@ -106,8 +93,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Password Field
                 TextFormField(
                   controller: _passwordController,
                   validator: _validatePassword,
@@ -129,8 +114,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-
-                // Submit Button or Loader
                 _isLoading
                     ? const CircularProgressIndicator()
                     : ElevatedButton(
@@ -138,7 +121,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          backgroundColor: Colors.blue,
+                          backgroundColor: AppColors.primary,
                         ),
                         child: Text(
                           isLogin ? 'Login' : 'Sign Up',
@@ -146,20 +129,15 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                 const SizedBox(height: 20),
-
-                // Toggle Login/Signup
                 GestureDetector(
                   onTap: _toggleAuthMode,
                   child: Text(
                     isLogin
                         ? "Don't have an account? Sign Up"
                         : "Already have an account? Login",
-                    style: const TextStyle(color: Colors.blue),
+                    style: const TextStyle(color: AppColors.primary),
                   ),
                 ),
-
-                const SizedBox(height: 30),
-                // Future feature placeholder (e.g., AI analysis)
               ],
             ),
           ),
